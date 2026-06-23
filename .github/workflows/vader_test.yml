@@ -1,0 +1,71 @@
+name: Vader Friends Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # Можно запускать по расписанию (каждое утро по московскому времени, например)
+  schedule:
+    - cron: '0 6 * * *'   # ежедневно в 6:00 UTC
+
+jobs:
+  test-and-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Загрузить код репозитория
+        uses: actions/checkout@v4
+
+      - name: 🐍 Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Установить зависимости
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # если requirements.txt нет, просто перечислим:
+          # pip install requests allure-pytest pytest
+
+      - name: 🧪 Запустить тест с Allure
+        run: |
+          pytest test_vader.py --alluredir=./allure-results -v
+
+      - name: 📊 Сохранить результаты Allure
+        if: always()   # сохраняем даже если тест упал
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+
+      - name: 📁 Сохранить сгенерированный файл с именами
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vader-friends
+          path: vader_friends.txt
+
+      - name: 📝 Сохранить лог
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mission-log
+          path: vader_mission.log
+
+      - name: 🌟 Сгенерировать Allure-отчёт
+        uses: simple-elf/allure-report-action@v1.9
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_history: allure-history
+          keep_reports: 20
+
+      - name: 📤 Опубликовать Allure-отчёт на GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
