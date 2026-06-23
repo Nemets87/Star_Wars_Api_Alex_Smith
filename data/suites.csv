@@ -1,0 +1,2 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Тест собирает всех персонажей из фильмов с Вейдером и сохраняет в файл без дубликатов.","37531","Сбор имён и сохранение в файл","","Tue Jun 23 10:38:45 UTC 2026","passed","Tue Jun 23 10:39:22 UTC 2026","","test_vader","",""
