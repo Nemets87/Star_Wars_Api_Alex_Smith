@@ -5,9 +5,12 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  # Можно запускать по расписанию (каждое утро по московскому времени, например)
   schedule:
-    - cron: '0 6 * * *'   # ежедневно в 6:00 UTC
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: write      # разрешаем запись в репозиторий (для gh-pages)
+  pages: write         # если нужно для Pages
 
 jobs:
   test-and-report:
