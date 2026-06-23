@@ -1,14 +1,13 @@
 import requests
 import warnings
 import logging
-import pytest
 import allure
 from urllib3.exceptions import InsecureRequestWarning
 
-# Отключаем назойливые предупреждения SSL
+# Отключаем предупреждения о небезопасном SSL
 warnings.simplefilter('ignore', InsecureRequestWarning)
 
-# Настраиваем логирование: и в консоль, и в файл
+# Настраиваем логирование: в файл и в консоль
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -19,12 +18,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+class Checking:
+    """Универсальный проверяльщик статус-кодов с логированием и Allure."""
+
+    @staticmethod
+    def check_status_code(response: requests.Response, expected_code: int = 200) -> None:
+        """
+        Проверяет, что статус-код ответа равен ожидаемому.
+        В случае несовпадения выбрасывает AssertionError.
+        """
+        with allure.step(f"Проверка статус-кода: ожидается {expected_code}"):
+            actual_code = response.status_code
+            logger.info(f"Ответ от {response.url} – статус: {actual_code}")
+            if actual_code != expected_code:
+                error_msg = f"❌ Ожидался статус {expected_code}, но получен {actual_code}"
+                logger.error(error_msg)
+                allure.attach(str(response.text), "Тело ответа", allure.attachment_type.TEXT)
+                raise AssertionError(error_msg)
+            logger.info(f"✅ Статус-код {actual_code} соответствует ожидаемому")
+
+
 def get_json(url: str) -> dict:
-    """Безопасный GET-запрос с отключённой проверкой SSL."""
+    """GET-запрос с проверкой статус-кода и возвратом JSON."""
     logger.debug(f"🌐 Запрос: {url}")
-    resp = requests.get(url, verify=False)
-    resp.raise_for_status()
-    return resp.json()
+    response = requests.get(url, verify=False)
+    # Магическая проверка статуса
+    Checking.check_status_code(response, 200)
+    return response.json()
+
 
 @allure.feature("Star Wars API")
 @allure.story("Персонажи, снимавшиеся с Дартом Вейдером")
@@ -55,6 +77,6 @@ def test_vader_friends():
         logger.info(f"📁 Файл 'vader_friends.txt' сохранён, имён: {len(names)}")
         allure.attach.file("vader_friends.txt", "Список имён", allure.attachment_type.TEXT)
 
-    with allure.step("4. Проверка результата"):
+    with allure.step("4. Итоговая проверка"):
         assert len(names) > 0, "Список персонажей пуст!"
         logger.info("✅ Миссия выполнена успешно")
