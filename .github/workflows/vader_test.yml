@@ -9,15 +9,14 @@ on:
     - cron: '0 6 * * *'
 
 permissions:
-  contents: write      # разрешаем запись в репозиторий (для gh-pages)
-  pages: write         # если нужно для Pages
+  contents: write
 
 jobs:
   test-and-report:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Загрузить код репозитория
+      - name: 📥 Загрузить код
         uses: actions/checkout@v4
 
       - name: 🐍 Установить Python
@@ -25,25 +24,48 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 Установить зависимости
+      - name: 📦 Установить зависимости Python
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          # если requirements.txt нет, просто перечислим:
-          # pip install requests allure-pytest pytest
+          pip install requests allure-pytest pytest
 
-      - name: 🧪 Запустить тест с Allure
+      - name: 🧪 Запустить тест с Allure-результатами
         run: |
           pytest test_vader.py --alluredir=./allure-results -v
 
-      - name: 📊 Сохранить результаты Allure
-        if: always()   # сохраняем даже если тест упал
+      - name: ☕ Установить Java (нужна для Allure CLI)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: ⬇️ Скачать и установить Allure CLI
+        run: |
+          ALLURE_VERSION=2.32.0   # актуальная версия, можно проверить https://github.com/allure-framework/allure2/releases
+          wget https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
+          tar -xzf allure-${ALLURE_VERSION}.tgz
+          sudo mv allure-${ALLURE_VERSION} /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
+
+      - name: 🌟 Сгенерировать Allure-отчёт
+        run: |
+          allure generate ./allure-results -o ./allure-report --clean
+
+      - name: 📊 Сохранить Allure-результаты (артефакт)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: allure-results
 
-      - name: 📁 Сохранить сгенерированный файл с именами
+      - name: 📁 Сохранить сгенерированный отчёт (артефакт)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+
+      - name: 📁 Сохранить файл с именами
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -57,18 +79,10 @@ jobs:
           name: mission-log
           path: vader_mission.log
 
-      - name: 🌟 Сгенерировать Allure-отчёт
-        uses: simple-elf/allure-report-action@v1.9
+      - name: 📤 Опубликовать отчёт на GitHub Pages
         if: always()
-        with:
-          allure_results: allure-results
-          allure_history: allure-history
-          keep_reports: 20
-
-      - name: 📤 Опубликовать Allure-отчёт на GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-history
+          publish_dir: allure-report
