@@ -1,4 +1,4 @@
-name: Vader Friends Test
+name: Vader Friends Test 
 
 on:
   push:
